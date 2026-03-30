@@ -15,6 +15,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from agent.validator import validate
+from agent.analyser import analyse
+from agent.decision import decide
 
 def load_records(input_path:str) -> list: 
     """
@@ -74,45 +76,18 @@ def run_pipeline(records: list, mock: bool=False) -> list:
         #Layer 1 - Validation
         validation = validate(record)
 
-        decision = _placeholder_decision(qid, validation)
+        #Layer 2 - Analysis, skipped if validation has returned/escalated
+        analysis = None
+        if validation["passed"]: 
+            analysis = analyse(record, mock=mock)
+        
+        #Layer 3 - assemble final decision 
+        decision = decide(qid, validation, analysis)
+
         decisions.append(decision)
     
     return decisions
 
-def _placeholder_decision(questionnaire_id: str, validation: dict) -> dict:
-    """
-    Temporary decision builder used until Layer 3 is implemented.
-
-    Converts Layer 1 output into the output schema format so the pipeline
-    can be tested end-to-end before Layers 2 and 3 exist.
-
-    Args:
-        questionnaire_id: The record's ID string.
-        validation: Output dict from agent.validator.validate().
-
-    Returns:
-        A decision dict matching the output schema.
-    """
-    if validation["missing_fields"]:
-        return {
-            "questionnaire_id": questionnaire_id,
-            "decision": "Return",
-            "missing_fields": validation["missing_fields"],
-            "escalation_reason": None,
-        }
-    if validation["escalate"]:
-        return {
-            "questionnaire_id": questionnaire_id,
-            "decision": "Escalate",
-            "missing_fields": None,
-            "escalation_reason": validation["escalation_reason"],
-        }
-    return {
-        "questionnaire_id": questionnaire_id,
-        "decision": "Approve",  # placeholder — Layer 2 may override this
-        "missing_fields": None,
-        "escalation_reason": None,
-    }
 
 def main(): 
     load_dotenv()
