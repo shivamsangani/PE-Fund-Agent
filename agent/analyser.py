@@ -42,8 +42,7 @@ ASSESS_TOOL = {
             },
             "escalation_reason": {
                 "type": "string",
-                "description": "Required if either assessment is not 'clear'. Null otherwise. Maximum 15 words.",
-                "nullable": True,
+                "description": "Required if either assessment is not 'clear'. Null otherwise. Maximum 8 words.",
             },
             "confidence": {
                 "type": "integer",
@@ -76,7 +75,7 @@ def analyse(record: dict, mock: bool=False) -> dict:
             escalation_reason (str | None) : Reason for escalation if needed 
     """
     source = record.get("source_of_funds_description")
-    accreditation = record.get("accrediation_details")
+    accreditation = record.get("accreditation_details")
 
     keyword_result = _check_keywords(source, accreditation)
     if keyword_result["matched"]: 
@@ -163,6 +162,7 @@ def _llm_assess(source: str, accreditation: str) -> dict:
         response = client.messages.create(
             model = MODEL, 
             max_tokens = 512, 
+            temperature = 0, 
             system = system_prompt, 
             tools = [ASSESS_TOOL],
             tool_choice={"type": "tool", "name":"assess_free_text"}, 
@@ -197,7 +197,11 @@ def _build_system_prompt(few_shot_examples: list) -> str:
         "credible for regulatory purposes. Vague, ambiguous, or potentially "
         "problematic descriptions must be flagged. Only the fields relevant to "
         "analysis are provided — not the full record. You must call the "
-        "assess_free_text tool with your assessment."
+        "assess_free_text tool with your assessment. "
+        "You are only assessing the quality and credibility of the content — "
+        "not whether fields are present. Presence checks have already been completed. "
+        "If a field contains a specific, verifiable claim, assess it as 'clear' "
+        "unless there is a genuine substantive concern."
     )
 
     if not few_shot_examples:

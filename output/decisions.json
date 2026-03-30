@@ -1,9 +1,9 @@
 [
   {
     "questionnaire_id": "1a59843c-9ade-4b6d-8961-215c44c9ca6a",
-    "decision": "Escalate",
+    "decision": "Approve",
     "missing_fields": null,
-    "escalation_reason": "No accreditation details provided for investor verification"
+    "escalation_reason": null
   },
   {
     "questionnaire_id": "2b67890d-1bfg-5c7e-9012-326d55d0db7b",
@@ -34,11 +34,5 @@
     "decision": "Escalate",
     "missing_fields": null,
     "escalation_reason": "Investor is not accredited"
-  },
-  {
-    "questionnaire_id": "6f01245h-5fkl-9g1i-3456-760h99h4hf1f",
-    "decision": "Escalate",
-    "missing_fields": null,
-    "escalation_reason": "Vague source description; missing accreditation documentation entirely"
   }
 ]

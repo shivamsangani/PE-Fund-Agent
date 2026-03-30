@@ -1,0 +1,41 @@
+[
+  {
+    "questionnaire_id": "6f01245h-5fkl-9g1i-3456-760h99h4hf1f",
+    "decision": "Escalate",
+    "missing_fields": null,
+    "escalation_reason": "Keyword match: 'intermediary entities'"
+  },
+  {
+    "questionnaire_id": "7g12356i-6glm-0h2j-4567-871i00i5ig2g",
+    "decision": "Escalate",
+    "missing_fields": null,
+    "escalation_reason": "Keyword match: 'emerging markets'"
+  },
+  {
+    "questionnaire_id": "ext-001-llm-ambiguous",
+    "decision": "Escalate",
+    "missing_fields": null,
+    "escalation_reason": "Structured arrangements and cross-border reallocation lack specificity; potential layering indicators"
+  },
+  {
+    "questionnaire_id": "ext-002-clean-approve",
+    "decision": "Approve",
+    "missing_fields": null,
+    "escalation_reason": null
+  },
+  {
+    "questionnaire_id": "ext-003-low-confidence",
+    "decision": "Escalate",
+    "missing_fields": null,
+    "escalation_reason": "Vague sourcing; internal confirmation lacks independence"
+  },
+  {
+    "questionnaire_id": "ext-004-missing-plus-nonaccredited",
+    "decision": "Return",
+    "missing_fields": [
+      "investor_address",
+      "investment_amount"
+    ],
+    "escalation_reason": null
+  }
+]

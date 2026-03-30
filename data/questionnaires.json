@@ -63,18 +63,5 @@
     "tax_id_provided": true,
     "signature_present": true,
     "submission_date": "2025-05-02"
-  },
-  {
-    "questionnaire_id": "6f01245h-5fkl-9g1i-3456-760h99h4hf1f",
-    "investor_name": "Investor Six",
-    "investor_type": "Natural Person",
-    "investor_address": "10 Downing Street, London, United Kingdom",
-    "investment_amount": 500000,
-    "is_accredited_investor": true,
-    "accreditation_details": "Accreditation confirmed via independent advisor assessment.",
-    "source_of_funds_description": "Proceeds from international business activities conducted through intermediary entities.",
-    "tax_id_provided": true,
-    "signature_present": true,
-    "submission_date": "2025-05-03"
   }
 ]

@@ -17,6 +17,8 @@ from dotenv import load_dotenv
 from agent.validator import validate
 from agent.analyser import analyse
 from agent.decision import decide
+from agent.learning.feedback import log_correction
+from agent.learning.distillation import run_distillation, _load_pending, KEYWORD_RULES_PATH, PENDING_RULES_PATH
 
 def load_records(input_path:str) -> list: 
     """
@@ -51,7 +53,7 @@ def write_output(decisions: list, output_path: str) -> None:
     """
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as output: 
-        json.dump(decisions, output, indent=2)
+        json.dump(decisions, output, indent=2, ensure_ascii=False)
     print(f"Output written to {output_path}")
 
 def run_pipeline(records: list, mock: bool=False) -> list: 
@@ -89,48 +91,165 @@ def run_pipeline(records: list, mock: bool=False) -> list:
     return decisions
 
 
-def main(): 
+def handle_feedback(args) -> None: 
+    """
+    log a human correction and trigger distillation pipeline 
+
+    requires --id, --human-decision, and --reason all to be provided 
+    fetches the original record from the input file to extract the text fields - 
+    avoids storing anything not needed in the feedback log
+
+    args: 
+        args: parsed argparse namespace
+    """
+    if not args.questionnaire_id or not args.human_decision or not args.reason: 
+        sys.exit("--feedback requires --id, --human-decision, and --reason")
+
+    records = load_records(args.input)
+    record = next((r for r in records if r.get("questionnaire_id") == args.questionnaire_id), None)
+
+
+    if record is None: 
+        sys.exit(f"questionnaire_id '{args.questionnaire_id}' not found in {args.input}")
+
+    try:
+        with open(args.output, "r") as f:
+            decisions = json.load(f)
+    except FileNotFoundError:
+        sys.exit(f"Output file not found: {args.output}. Run the pipeline first.")
+    except json.JSONDecodeError as e:
+        sys.exit(f"Malformed output file: {e}")
+
+    decision_record = next((d for d in decisions if d.get("questionnaire_id") == args.questionnaire_id), None)
+    if decision_record is None:
+        sys.exit(f"questionnaire_id '{args.questionnaire_id}' not found in {args.output}.")
+
+    agent_decision = decision_record["decision"]
+
+    log_correction(
+        questionnaire_id=args.questionnaire_id,
+        source_of_funds=record.get("source_of_funds_description", ""),
+        accreditation_details=record.get("accreditation_details", ""),
+        agent_decision=agent_decision,
+        human_decision=args.human_decision,
+        human_reason=args.reason,
+    )
+
+    if agent_decision != args.human_decision:
+        from agent.learning.feedback import get_entry_by_id
+        correction = get_entry_by_id(args.questionnaire_id)
+        run_distillation(correction)
+    else:
+        print("Agent and human decisions match — skipping distillation.")
+
+
+def handle_approve_rules() -> None:
+    """
+    Interactively present pending distilled rules for human approval.
+
+    For each pending rule, shows the keyword, the evaluator's reasoning,
+    and the source correction. The operator approves or rejects each one.
+    Approved rules are appended to keyword_rules.json and removed from
+    pending_rules.json.
+    """
+    try:
+        with open(PENDING_RULES_PATH, "r") as f:
+            pending = json.load(f)
+    except FileNotFoundError:
+        print("No pending rules to review.")
+        return
+    except json.JSONDecodeError as e:
+        sys.exit(f"Error: malformed pending_rules.json: {e}")
+
+    if not pending:
+        print("No pending rules to review.")
+        return
+
+    approved_keywords = []
+    remaining = []
+
+    for rule in pending:
+        print("\n" + "─" * 50)
+        print(f"Keyword:          {rule['keyword']}")
+        print(f"Evaluator reason: {rule['evaluator_reason']}")
+        print(f"Source case ID:   {rule.get('source_questionnaire_id', 'unknown')}")
+        print(f"Human reason:     {rule.get('human_reason', '')}")
+
+        while True:
+            choice = input("Approve this rule? [y/n]: ").strip().lower()
+            if choice in ("y", "n"):
+                break
+            print("Please enter y or n.")
+
+        if choice == "y":
+            approved_keywords.append(rule["keyword"])
+            print(f"Approved: '{rule['keyword']}'")
+        else:
+            remaining.append(rule)
+            print(f"Rejected: '{rule['keyword']}'")
+
+    if approved_keywords:
+        # Append to live keyword list.
+        try:
+            with open(KEYWORD_RULES_PATH, "r") as f:
+                rules = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            rules = {"keywords": []}
+
+        existing = set(rules.get("keywords", []))
+        new_keywords = [k for k in approved_keywords if k not in existing]
+        rules["keywords"].extend(new_keywords)
+
+        with open(KEYWORD_RULES_PATH, "w") as f:
+            json.dump(rules, f, indent=2, ensure_ascii=False)
+
+        print(f"\nAdded {len(new_keywords)} new keyword(s) to keyword_rules.json.")
+
+    # Write back only the rejected rules.
+    with open(PENDING_RULES_PATH, "w") as f:
+        json.dump(remaining, f, indent=2, ensure_ascii=False)
+
+def main():
     load_dotenv()
 
-    parser = argparse.ArgumentParser( 
-        description="PE fund subscription questionnairse processing agent"
+    parser = argparse.ArgumentParser(
+        description="PE fund subscription questionnaire processing agent."
     )
+    subparsers = parser.add_subparsers(dest="command")
 
-    parser.add_argument("--input", help="Path to input JSON file")
-    parser.add_argument("--output", help="Path to write output JSON")
-    parser.add_argument(
-        "--mock", 
-        action="store_true", 
-        help="Run in mock mode - skips live LLM API call in Layer 2"
-    )
+    # --- run ---
+    run_parser = subparsers.add_parser("run", help="Process a questionnaire file.")
+    run_parser.add_argument("--input", default="data/questionnaires.json", help="Path to input JSON (default: data/questionnaires.json)")
+    run_parser.add_argument("--output", default="output/decisions.json", help="Path to write decisions (default: output/decisions.json)")
+    run_parser.add_argument("--mock", action="store_true", help="Skip live LLM call in Layer 2.")
 
-    #Feedback mode
-    parser.add_argument("--feedback", action="store_true", help="Log a human correction")
-    parser.add_argument("--id", dest="questionnaire_id", help="Questionnaire ID to correct")
-    parser.add_argument("--human-decision", choices=["Approve", "Return", "Escalate"])
-    parser.add_argument("--reason", help="Human-provided reason for the correction")
+    # --- feedback ---
+    fb_parser = subparsers.add_parser("feedback", help="Log a human correction for a processed record.")
+    fb_parser.add_argument("--id", dest="questionnaire_id", required=True, help="Questionnaire ID to correct.")
+    fb_parser.add_argument("--human-decision", required=True, choices=["Approve", "Return", "Escalate"])
+    fb_parser.add_argument("--reason", required=True, help="Reason for the correction.")
+    fb_parser.add_argument("--input", default="data/questionnaires.json", help="Input file (default: data/questionnaires.json)")
+    fb_parser.add_argument("--output", default="output/decisions.json", help="Decisions file to read agent decision from (default: output/decisions.json)")
 
-    parser.add_argument(
-        "--approve-rules", 
-        action="store_true", 
-        help="Approve or reject pending rules"
-    )
+    # --- approve-rules ---
+    subparsers.add_parser("approve-rules", help="Interactively approve or reject distilled pending rules.")
 
     args = parser.parse_args()
 
-    if args.feedback: 
-        sys.exit("not implemented yet")
-    
-    if args.approve_rules: 
-        sys.exit("not implemented")
-    
-    if not args.input or not args.output: 
+    if args.command == "run":
+        records = load_records(args.input)
+        decisions = run_pipeline(records, mock=args.mock)
+        write_output(decisions, args.output)
+
+    elif args.command == "feedback":
+        handle_feedback(args)
+
+    elif args.command == "approve-rules":
+        handle_approve_rules()
+
+    else:
         parser.print_help()
         sys.exit(1)
-    
-    records = load_records(args.input)
-    decisions = run_pipeline(records, mock=args.mock)
-    write_output(decisions, args.output)
 
 if __name__ == "__main__": 
     main()

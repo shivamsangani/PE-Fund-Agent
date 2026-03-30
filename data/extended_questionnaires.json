@@ -1,0 +1,80 @@
+[
+  {
+    "questionnaire_id": "6f01245h-5fkl-9g1i-3456-760h99h4hf1f",
+    "investor_name": "Investor Six",
+    "investor_type": "Natural Person",
+    "investor_address": "10 Downing Street, London, United Kingdom",
+    "investment_amount": 500000,
+    "is_accredited_investor": true,
+    "accreditation_details": "Accreditation confirmed via independent advisor assessment.",
+    "source_of_funds_description": "Proceeds from international business activities conducted through intermediary entities.",
+    "tax_id_provided": true,
+    "signature_present": true,
+    "submission_date": "2025-05-03"
+  },
+  {
+    "questionnaire_id": "7g12356i-6glm-0h2j-4567-871i00i5ig2g",
+    "investor_name": "Investor Seven",
+    "investor_type": "Natural Person",
+    "investor_address": "15 Rue de Rivoli, Paris, France",
+    "investment_amount": 200000,
+    "is_accredited_investor": true,
+    "accreditation_details": "Net worth exceeds $1 million excluding primary residence.",
+    "source_of_funds_description": "Proceeds from recent property disposals in emerging markets.",
+    "tax_id_provided": true,
+    "signature_present": true,
+    "submission_date": "2025-05-04"
+  },
+  {
+    "questionnaire_id": "ext-001-llm-ambiguous",
+    "investor_name": "Investor Eight",
+    "investor_type": "Natural Person",
+    "investor_address": "88 Marina Bay, Singapore",
+    "investment_amount": 300000,
+    "is_accredited_investor": true,
+    "accreditation_details": "Wealth accumulated through diversified participation across multiple asset classes over a sustained period.",
+    "source_of_funds_description": "Funds derived from structured financial arrangements and cross-border capital reallocation activities.",
+    "tax_id_provided": true,
+    "signature_present": true,
+    "submission_date": "2025-05-05"
+  },
+  {
+    "questionnaire_id": "ext-002-clean-approve",
+    "investor_name": "Investor Nine",
+    "investor_type": "Natural Person",
+    "investor_address": "42 Park Avenue, New York, NY 10016, United States",
+    "investment_amount": 500000,
+    "is_accredited_investor": true,
+    "accreditation_details": "Individual net worth exceeds $2.5 million excluding primary residence, verified by CPA letter dated April 2025.",
+    "source_of_funds_description": "Proceeds from the sale of publicly traded equities held in a Fidelity brokerage account.",
+    "tax_id_provided": true,
+    "signature_present": true,
+    "submission_date": "2025-05-05"
+  },
+  {
+    "questionnaire_id": "ext-003-low-confidence",
+    "investor_name": "Investor Ten",
+    "investor_type": "Natural Person",
+    "investor_address": "7 Clifton Road, Lagos, Nigeria",
+    "investment_amount": 750000,
+    "is_accredited_investor": true,
+    "accreditation_details": "Meets accreditation requirements as confirmed internally.",
+    "source_of_funds_description": "Income generated from consulting engagements and returns on prior investments, details available on request.",
+    "tax_id_provided": true,
+    "signature_present": true,
+    "submission_date": "2025-05-06"
+  },
+  {
+    "questionnaire_id": "ext-004-missing-plus-nonaccredited",
+    "investor_name": "Investor Eleven",
+    "investor_type": "Natural Person",
+    "investor_address": null,
+    "investment_amount": null,
+    "is_accredited_investor": false,
+    "accreditation_details": "Does not meet accreditation requirements.",
+    "source_of_funds_description": "Personal savings.",
+    "tax_id_provided": true,
+    "signature_present": true,
+    "submission_date": "2025-05-06"
+  }
+]
