@@ -76,6 +76,10 @@ def run_pipeline(records: list, mock: bool=False) -> list:
     print(f"\nProcessing {total} record(s)...\n")
 
     for i, record in enumerate(records, start=1):
+        if not isinstance(record, dict):
+            print(f"[{i}/{total}] Skipping malformed record (expected object, got {type(record).__name__})")
+            continue
+
         qid = record.get("questionnaire_id", "UNKNOWN")
         name = record.get("investor_name", "Unknown Investor")
         print(f"[{i}/{total}] {name} ({qid})")

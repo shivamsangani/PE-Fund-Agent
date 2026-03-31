@@ -10,7 +10,8 @@ My agent has taken a 3 layer approach to the problem, also including a 2 step le
 1. Layer 1 - Validation
 2. Layer 2 - Analysis
 3. Layer 3 - Decision Engine
-4. Layer 4 - Learning Mechanism/Feedback Loop 
+
+Learning Mechanism/Feedback Loop 
 
 Please find a more detailed description of my architecture, design choices, decision logic and learning mechanism below. Hope you enjoy using my agent! 
 
@@ -96,11 +97,14 @@ python3 main.py <run|feedback|approve-rules> -h
 ```
 
 ## Architecture and Design Choices
-As mentioned above, my architecture is divided into 3 key layers + a feedback mechanism: 
+As mentioned above, my architecture is divided into 3 key layers + a feedback mechanism, summarised in this diagram:
+ ![alt text](images/system.png)
 ### 1. Validation (agent/validator.py)
-This layer runs first on any questionnaire and performs deterministic checks on the basic review criteria outlined in the brief. It checks all required fields for null/missing values, however it also performs extra checks on the fields `signature_present` (must be true),`tax_id_provided` (must be true),`investment_amount` (must be > 0) which cause the questionnaire to be returned.  
+This layer runs first on any questionnaire and performs deterministic checks on the basic review criteria outlined in the brief. It checks all required fields for null/missing values, however it also performs extra checks on the fields `signature_present` (must be true),`tax_id_provided` (must be true),`investment_amount` (must be > 0) which cause the questionnaire to be returned. <br>
 
-If there are any missing fields, the agent outputs the **Return** (actionable - investor can fix and resubmit). However if `is_accredited_investor` is false, the agent outputs **Escalate** (not fixable by resubmission, needs human review). If everything passes then the questionnaire gets passed to Layer 2 (Analysis).
+If there are any missing fields, the agent outputs the **Return** (actionable - investor can fix and resubmit). However if `is_accredited_investor` is false, the agent outputs **Escalate** (not fixable by resubmission, needs human review). If everything passes then the questionnaire gets passed to Layer 2 (Analysis). <br>
+
+There is also extra checks in this file for the types of each field - if the field types do not match, a Return is initiated
 
 The output of this layer is a list of missing/failed fields (if needed), a pass/fail flag and a escalation flag stored in a JSON. For example: 
 ```json 
@@ -116,7 +120,7 @@ The output of this layer is a list of missing/failed fields (if needed), a pass/
 - Return takes priority over Escalate - if fields are missing AND the investor is non-accredited, returning is more actionable since the compliance team cannot review an incomplete submission anyways. 
 - This layer does not assess the *quality* of the field values - handled by Layer 2. This enables a each layer to be fully deterministic or a hybrid between rule-based and ML handling. 
 
-### 2. Analysis (agent/analyser.py)
+### 2. Analysis/Handling Ambiguity (agent/analyser.py)
 This layer runs a two-stage analysis (keyword-matching, LLM call) of the two free-text fields in the questionnaire: `source_of_funds_description` and `accreditation_details`. This layer only runs if Layer 1 passes - this means that it is never called on incomplete records
 
 1. Keyword Matching - The agent checks both fields against a known list of known red-flag phrases in `data/keyword_rules.json`. It performs case-insensitive, whole phrase matching so that the longer phrases match before their substrings (e.g. "intermediary entities" matches before "intermediary") and case does not affect the match. This stage involves 0 API cost and is instant - if a keyword is matched, Layer 3 (Decision) is called immediately without making any LLM calls
@@ -130,9 +134,11 @@ This layer runs a two-stage analysis (keyword-matching, LLM call) of the two fre
     "confidence": 81
 }
 ```
-In this stage, tool use is preferred over prompt engineering a JSON because it guarantees format compliance - The API rejects responses that don't match. I've also added an confidence score to each JSON, if `confidence<75`, escalation is triggered no matter the assessment as you would rather be safe in uncertain cases. 
+In this stage, tool use is preferred over prompt engineering a JSON because it guarantees format compliance - The API rejects responses that don't match. I've also added an confidence score to each JSON, if `confidence<75`, escalation is triggered no matter the assessment as you would rather be safe in uncertain cases. Also, if the model doesn't return a tool call at all, I added a fail-safe which escalates to human review. <br>
 **Learning Mechanism**
-Finally, up to 3 few-shot examples from the feedback log are injected into the system prompt at runtime if the LLM is called, this allows the model to learn from past human corrections without retraining the model completely. This prompt engineering is much faster and more flexible than retraining a model completely, if also incorporated with RAG (so that the model can retrieve previous rejected/accepted questionnaires from AltOS' record) it allows for a much more adaptable system. Only if a ceiling is hit with Prompt Engineering + RAG can we consider fine-tuning a model for these purposes which is more expensive and takes more time. 
+-Finally, up to 3 few-shot examples from the feedback log are injected into the system prompt at runtime if the LLM is called, this allows the model to learn from past human corrections without retraining the model completely.
+-This prompt engineering is much faster and more flexible than retraining a model completely, if also incorporated with RAG (so that the model can retrieve previous rejected/accepted questionnaires from AltOS' record) it allows for a much more adaptable system. 
+-Only if a ceiling is hit with Prompt Engineering + RAG can we consider fine-tuning a model for these purposes which is more expensive and takes more time. 
 
 **Design Choices**
 I have adopted a hybrid system of keyword matching and a LLM for a few reasons: 
@@ -142,7 +148,7 @@ I have adopted a hybrid system of keyword matching and a LLM for a few reasons:
 
 Hence the hybrid system makes sense as the two stages complement each other: keywords catch known words/phrases reliably, LLM handles more ambiguous cases 
 
-### 3. Decision Engine (agent/decision.py)
+### 3. Decision Engine/Decision Logic (agent/decision.py)
 This layer assembles the final decision (Approve, Return, Escalate) with any other associated fields (`missing_fields`, `escalation_reason`) from the outputs of Layer 1 and Layer 2. The file is a single function with no LLM calls and no dependencies - it is purely deterministic. The decision follows a strict priority order (first condition matches, wins): 
     1. Missing/invalid required fields -> Return
     2. Non-accredited investor -> Escalate 
@@ -165,3 +171,54 @@ Finally after this layer, the pipeline is complete, and decision.py returns this
   "escalation_reason": "..." | null
 }
 ```
+
+## Learning Mechanism (More Detailed)
+I managed to implement a full learning mechanism that allows the agent to improve with human oversight. Similar to Layer 2, I implemented it with two complementary mechanisms: few-shot injection (immediate) and rules distillation (persistent, affects future runs). All learning happens with human oversight - nothing is applied automatically, this keeps the human in the loop. 
+
+A compliance officer submits a correction via `python3 main.py feedback`, this is logged to `data/feedback_log.json` with the: two free text fields, agent decision, human decision, human reason and timestamp. The distillation process is only triggered if the agent decision differs from the human decision. 
+
+**Security** - PII is never stored in the `feedback_logs.json`, it is deliberately excluded. 
+
+**Explanation + Design Choices** <br>
+1. Few-shot injection - On every Layer 2 LLM call, the agent retrieves the 3 most similar past corrections from the feedback log. Similarity is computed using `difflib.SequenceMatcher` on the source + accreditation text. These similar corrections are injected into the system prompt so the model sees: what was submitted, what the agent decided, what the human overrode and why
+    - I decided to use this library instead of embedding the text as I believe this is a future extension given more time, it also is a quicker process. 
+    - The effect is immediate - the next run after a logged correction already benefits from it, with no retraining required 
+
+2. Rules distillation - I use a two LLM proposer-evaluator pattern to propose new keywords to be added to the current rules based on logged corrections. 
+    -Proposer - Given the correction context, proposes a keyword or phrase that could catch similar cases 
+    -Evaluator - Given the proposed keyword and existing list, checks for specificity, redundancy, and usefulness. Also rejects with a reason and rejects if the keyword already exists in the current rules
+    -This pattern reduces low-quality output from entering the keywords list - a single model generating and approving would be unreliable
+    -Approved rules still need to be further examined and improved by a human. A human compliance officier runs `python3 main.py approve-rules` to review each proposal before its added to the final keyword list
+
+**Human in the Loop Design** - No correction, distilled rule or proposed keyword ever affects the live system without a human approving it. The agent can learn and propose but not self-modify. This is intentional for a compliance context where false positives can have an impact.   
+
+## Security Decisions
+Several security assumptions were made about the threat model and data handling requirements. These shaped architectural decisions: 
+- **Untrusted Input** - The free text fields are treated as untrusted user input. An intruder could embed prompt injection instructions alongside these fields (a hidden instruction to override the agent's behaviour or output fake assessments). This is addressed in 2 ways: the LLM is never shown the raw text fields without a structured prompt boundary (system prompt is separate from user prompt), and forced structured output via tool use means the model can only return a predefined JSON schema (output guardrail). This limits what a successful injection could do even if it got through 
+- **The questionnaire fields include PII** - The `feedback_log.json` deliberately excludes all PII - only the two free-text assessment fields, decisions, and reasons are stored. This means that a log compromise does not expose investor identity data. As an extension this could lead to field level encryption (AES-256), TLS in transit for API calls and tokenisation of PII fields before an LLM call 
+- **Principle of least privilege** - Each layer only has access to what it needs. Layer 2 only passes the two relevant free-text fields not the full record - the LLM is never given the investor's name, tax ID, or investment amount. This limits the damage if the model were to leak context, it was never given the full investor record 
+- **LLM should not be called on incomplete records** - Running the LLM on null or missing fields risks hallucination - Layer 1 acting as a hard gate before any LLM call addresses this directly. 
+
+## Assumptions
+
+- Input is a JSON array of flat objects — no nested structures are handled
+- `questionnaire_id` is always present and unique across records
+- `submission_date` is informational only and is not validated
+- `signature_present: false` and `tax_id_provided: false` are treated as missing fields since they are boolean compliance flags, not just absent data
+- `investment_amount` of zero is treated as invalid, not just null
+- Return takes priority over Escalate when both conditions are met — missing fields should be resolved before escalation is meaningful
+- Non-accredited investors are always escalated — the brief said "generally escalated", this is treated as a hard rule
+- A confidence threshold of 75 is the appropriate cutoff for requiring human review
+- 3 few-shot examples provides sufficient context without overloading the prompt
+- Only corrections where the human and agent disagree are worth distilling into rules
+
+## Known Limitations
+
+- **Keyword matching is exact** — a red-flag phrase that is paraphrased or misspelled will not be caught by Stage 1 and must rely on the LLM
+- **Few-shot similarity is text-based** — `difflib.SequenceMatcher` compares character sequences, not semantic meaning. Two corrections about the same concept worded differently may score low similarity and not be retrieved
+- **No confidence calibration** — the 75 confidence threshold is fixed. There is no mechanism to track whether records in the 75–85 band are being overridden frequently, which would indicate the threshold is too low
+- **Distillation proposes one keyword per correction** — the pipeline extracts a single phrase from each correction. It cannot identify broader patterns across multiple corrections
+- **Feedback log grows unboundedly** — there is no archiving or pruning mechanism. Over time, old corrections from outdated compliance policies will still be retrieved as few-shot examples
+- **Single-provider dependency** — Layer 2 and distillation are coupled to the Anthropic SDK. Switching providers requires changes in `analyser.py` and `distillation.py`
+- **Prototype scale only** — processes records sequentially in a single process. Not suitable for high-volume batch processing without parallelisation
+
