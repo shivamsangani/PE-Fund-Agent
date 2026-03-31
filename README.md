@@ -20,19 +20,20 @@
 - [Known Limitations](#known-limitations)
 
 ## Overview
-This repository contains a prototype AI agent system capable of processing PE fund subscription questionnaires. Based on the content and structure of each questionnaire the agent either: 
+This repository contains a prototype AI agent system capable of processing PE fund subscription questionnaires. Based on the content and structure of each questionnaire the agent either:
 - Approves
 - Returns
-- Escalates to Human Review 
+- Escalates to Human Review
 
-My agent has taken a 3 layer approach to the problem, also including a 2 step learning mechanism to allow the agent to improve over time with human oversight. A basic overview of the 3 layers: 
+My agent is built around one core principle: **don't call an LLM until you have to.** Deterministic checks run first and resolve clear-cut cases before any AI processing occurs. Only submissions that pass structural validation and contain free-text content worth interpreting ever reach the LLM. This keeps the system fast, cheap, and predictable.
+
+A basic overview of the architecture:
 1. Layer 1 - Validation
 2. Layer 2 - Analysis
 3. Layer 3 - Decision Engine
+4. Learning Mechanism / Feedback Loop
 
-Learning Mechanism/Feedback Loop 
-
-Please find a more detailed description of my architecture, design choices, decision logic and learning mechanism below. Hope you enjoy using my agent! 
+Please find a more detailed description of my architecture, design choices, decision logic and learning mechanism below. Hope you enjoy reading my documentation and using my agent!!
 
 ## Setup
 
