@@ -56,38 +56,64 @@ def write_output(decisions: list, output_path: str) -> None:
         json.dump(decisions, output, indent=2, ensure_ascii=False)
     print(f"Output written to {output_path}")
 
-def run_pipeline(records: list, mock: bool=False) -> list: 
+def run_pipeline(records: list, mock: bool=False) -> list:
     """
     Run the full pipeline over a full list of questionnaire records
 
-    Layer 1 always runs. Layer 2 is skipped if Layer 1 does not pass. 
+    Layer 1 always runs. Layer 2 is skipped if Layer 1 does not pass.
     mock=True bypasses the LLM call in Layer 2 with a hardcoded response
 
-    Args: 
+    Args:
         records: List of questionnaire dicts
         mock: if True, Layer 3 returns a hardcoded response instead of calling a LLM API
 
-    Returns: 
+    Returns:
         List of decision dicts matching the output format
     """
     decisions = []
+    total = len(records)
 
-    for record in records: 
+    print(f"\nProcessing {total} record(s)...\n")
+
+    for i, record in enumerate(records, start=1):
         qid = record.get("questionnaire_id", "UNKNOWN")
+        name = record.get("investor_name", "Unknown Investor")
+        print(f"[{i}/{total}] {name} ({qid})")
 
         #Layer 1 - Validation
         validation = validate(record)
+        if not validation["passed"]:
+            missing = validation.get("missing_fields", [])
+            if missing:
+                print(f"         Layer 1: FAIL — missing fields: {', '.join(missing)}")
+            elif validation.get("escalate"):
+                print(f"         Layer 1: ESCALATE — {validation.get('escalation_reason', '')}")
+            else:
+                print(f"         Layer 1: FAIL")
+        else:
+            print(f"         Layer 1: pass")
 
         #Layer 2 - Analysis, skipped if validation has returned/escalated
         analysis = None
-        if validation["passed"]: 
+        if validation["passed"]:
             analysis = analyse(record, mock=mock)
-        
-        #Layer 3 - assemble final decision 
+            if analysis["escalate"]:
+                print(f"         Layer 2: ESCALATE — {analysis.get('escalation_reason', '')}")
+            else:
+                print(f"         Layer 2: pass")
+        else:
+            print(f"         Layer 2: skipped")
+
+        #Layer 3 - assemble final decision
         decision = decide(qid, validation, analysis)
+        print(f"         Decision: {decision['decision']}")
+        if decision.get("escalation_reason"):
+            print(f"         Reason:   {decision['escalation_reason']}")
+        elif decision.get("missing_fields"):
+            print(f"         Reason:   missing fields: {', '.join(decision['missing_fields'])}")
 
         decisions.append(decision)
-    
+
     return decisions
 
 
@@ -240,6 +266,21 @@ def main():
         records = load_records(args.input)
         decisions = run_pipeline(records, mock=args.mock)
         write_output(decisions, args.output)
+
+        counts = {"Approve": 0, "Return": 0, "Escalate": 0}
+        for d in decisions:
+            outcome = d.get("decision")
+            if outcome in counts:
+                counts[outcome] += 1
+
+        print("\n" + "=" * 50)
+        print("SUMMARY")
+        print("=" * 50)
+        print(f"  Total records : {len(decisions)}")
+        print(f"  Approved      : {counts['Approve']}")
+        print(f"  Returned      : {counts['Return']}")
+        print(f"  Escalated     : {counts['Escalate']}")
+        print("=" * 50)
 
     elif args.command == "feedback":
         handle_feedback(args)
