@@ -136,9 +136,9 @@ This layer runs a two-stage analysis (keyword-matching, LLM call) of the two fre
 ```
 In this stage, tool use is preferred over prompt engineering a JSON because it guarantees format compliance - The API rejects responses that don't match. I've also added an confidence score to each JSON, if `confidence<75`, escalation is triggered no matter the assessment as you would rather be safe in uncertain cases. Also, if the model doesn't return a tool call at all, I added a fail-safe which escalates to human review. <br>
 **Learning Mechanism**
--Finally, up to 3 few-shot examples from the feedback log are injected into the system prompt at runtime if the LLM is called, this allows the model to learn from past human corrections without retraining the model completely.
--This prompt engineering is much faster and more flexible than retraining a model completely, if also incorporated with RAG (so that the model can retrieve previous rejected/accepted questionnaires from AltOS' record) it allows for a much more adaptable system. 
--Only if a ceiling is hit with Prompt Engineering + RAG can we consider fine-tuning a model for these purposes which is more expensive and takes more time. 
+- Finally, up to 3 few-shot examples from the feedback log are injected into the system prompt at runtime if the LLM is called, this allows the model to learn from past human corrections without retraining the model completely.
+- This prompt engineering is much faster and more flexible than retraining a model completely, if also incorporated with RAG (so that the model can retrieve previous rejected/accepted questionnaires from AltOS' record) it allows for a much more adaptable system. 
+- Only if a ceiling is hit with Prompt Engineering + RAG can we consider fine-tuning a model for these purposes which is more expensive and takes more time. 
 
 **Design Choices**
 I have adopted a hybrid system of keyword matching and a LLM for a few reasons: 
