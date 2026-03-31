@@ -33,7 +33,9 @@ A basic overview of the architecture:
 3. Layer 3 - Decision Engine
 4. Learning Mechanism / Feedback Loop
 
-Please find a more detailed description of my architecture, design choices, decision logic and learning mechanism below. Hope you enjoy reading my documentation and using my agent!!
+**Key assumptions:** input is a well-formed JSON array, `questionnaire_id` is always unique, and Return takes priority over Escalate when both conditions are met. The confidence threshold of 75 and the 3 few-shot example limit are deliberate choices rather than spec requirements. Full assumptions and known limitations are documented at the bottom of this README.
+
+Please find a more detailed description of my architecture, design choices, decision logic and learning mechanism below. Hope you enjoy reading my documentation and using my agent!
 
 ## Setup
 
@@ -129,10 +131,10 @@ There is also extra checks in this file for the types of each field - if the fie
 The output of this layer is a list of missing/failed fields (if needed), a pass/fail flag and a escalation flag stored in a JSON. For example: 
 ```json 
 {
-    "passed": False,
+    "passed": false,
     "missing_fields": ["investor_address", "tax_id_provided"],
-    "escalate": False,
-    "escalation_reason": None
+    "escalate": false,
+    "escalation_reason": null
 }
 ```
 **Design Choices**
