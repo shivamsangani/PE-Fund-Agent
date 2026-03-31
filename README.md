@@ -1,6 +1,25 @@
 # PE-Fund-Agent
 
-## Overview 
+## Table of Contents
+
+- [Overview](#overview)
+- [Setup](#setup)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [Running the Agent](#running-the-agent)
+  - [Process Questionnaires](#process-questionnaires)
+  - [Submit a Human Correction](#submit-a-human-correction)
+  - [Review and Approve Distilled Rules](#review-and-approve-distilled-rules)
+- [Architecture and Design Choices](#architecture-and-design-choices)
+  - [1. Validation](#1-validation-agentvalidatorpy)
+  - [2. Analysis/Handling Ambiguity](#2-analysishandling-ambiguity-agentanalyserpy)
+  - [3. Decision Engine/Decision Logic](#3-decision-enginedecision-logic-agentdecisionpy)
+- [Learning Mechanism](#learning-mechanism-more-detailed)
+- [Security Decisions](#security-decisions)
+- [Assumptions](#assumptions)
+- [Known Limitations](#known-limitations)
+
+## Overview
 This repository contains a prototype AI agent system capable of processing PE fund subscription questionnaires. Based on the content and structure of each questionnaire the agent either: 
 - Approves
 - Returns
@@ -141,7 +160,7 @@ In this stage, tool use is preferred over prompt engineering a JSON because it g
 - This prompt engineering is much faster and more flexible than retraining a model completely, if also incorporated with RAG (so that the model can retrieve previous rejected/accepted questionnaires from AltOS' record) it allows for a much more adaptable system. 
 - Only if a ceiling is hit with Prompt Engineering + RAG can we consider fine-tuning a model for these purposes which is more expensive and takes more time. 
 
-**Design Choices**
+**Design Choices** <br>
 I have adopted a hybrid system of keyword matching and a LLM for a few reasons: 
 - Keywords only cannot catch niche phrasing, e.g. "structured financial arrangements and cross-border capital reallocation" contains no flagged keywords but is clearly suspicious. With no LLM, a human would need to review this, the LLM catches it where static rules cannot. 
 - However LLM's are also probabilistic - a keyword that has been confirmed should always be escalated not depend on the confidence of the model to catch it
@@ -151,12 +170,13 @@ Hence the hybrid system makes sense as the two stages complement each other: key
 
 ### 3. Decision Engine/Decision Logic (agent/decision.py)
 This layer assembles the final decision (Approve, Return, Escalate) with any other associated fields (`missing_fields`, `escalation_reason`) from the outputs of Layer 1 and Layer 2. The file is a single function with no LLM calls and no dependencies - it is purely deterministic. The decision follows a strict priority order (first condition matches, wins): 
-    1. Missing/invalid required fields -> Return
-    2. Non-accredited investor -> Escalate 
-    3. Keyword match in free text -> Escalate
-    4. LLM flags ambiguous or concerning -> Escalate
-    5. LLM confidence < 75 -> Escalate
-    6. All clear -> Approve
+
+1. Missing/invalid required fields -> Return
+2. Non-accredited investor -> Escalate 
+3. Keyword match in free text -> Escalate
+4. LLM flags ambiguous or concerning -> Escalate
+5. LLM confidence < 75 -> Escalate
+6. All clear -> Approve
 
 **Design Choices**
 - I made the assumption that a Returned questionnaire takes priority over an Escalated one. If a record has missing fields and a non-accredited investor, returning is more actionable - it allows the investor to fix their mistakes. A compliance officer cannot meaningfully review an incomplete submission and it also allows time for the compliance officer to focus on more important cases (e.g. a completed form with suspicious fields flagged in Layer 2)
@@ -173,23 +193,23 @@ Finally after this layer, the pipeline is complete, and decision.py returns this
 }
 ```
 
-## Learning Mechanism (More Detailed)
-I managed to implement a full learning mechanism that allows the agent to improve with human oversight. Similar to Layer 2, I implemented it with two complementary mechanisms: few-shot injection (immediate) and rules distillation (persistent, affects future runs). All learning happens with human oversight - nothing is applied automatically, this keeps the human in the loop. 
+## Learning Mechanism (agent/learning)
+I managed to implement a full learning mechanism that allows the agent to improve with human oversight. Similar to Layer 2, I implemented it with two complementary mechanisms: **few-shot injection** (immediate) and **rule distillation** (persistent, affects future runs). All learning happens with human oversight - nothing is applied automatically, this keeps the human in the loop. <br>
 
-A compliance officer submits a correction via `python3 main.py feedback`, this is logged to `data/feedback_log.json` with the: two free text fields, agent decision, human decision, human reason and timestamp. The distillation process is only triggered if the agent decision differs from the human decision. 
+A compliance officer submits a correction via `python3 main.py feedback`, this is logged to `data/feedback_log.json` with the: two free text fields, agent decision, human decision, human reason and timestamp. The distillation process is only triggered if the agent decision differs from the human decision.<br> 
 
-**Security** - PII is never stored in the `feedback_logs.json`, it is deliberately excluded. 
+**Security** - PII is never stored in the `feedback_logs.json`, it is deliberately excluded. <br>
 
 **Explanation + Design Choices** <br>
-1. Few-shot injection - On every Layer 2 LLM call, the agent retrieves the 3 most similar past corrections from the feedback log. Similarity is computed using `difflib.SequenceMatcher` on the source + accreditation text. These similar corrections are injected into the system prompt so the model sees: what was submitted, what the agent decided, what the human overrode and why
+1. **Few-shot injection** - On every Layer 2 LLM call, the agent retrieves the 3 most similar past corrections from the feedback log. Similarity is computed using `difflib.SequenceMatcher` on the source + accreditation text. These similar corrections are injected into the system prompt so the model sees: what was submitted, what the agent decided, what the human overrode and why
     - I decided to use this library instead of embedding the text as I believe this is a future extension given more time, it also is a quicker process. 
     - The effect is immediate - the next run after a logged correction already benefits from it, with no retraining required 
 
-2. Rules distillation - I use a two LLM proposer-evaluator pattern to propose new keywords to be added to the current rules based on logged corrections. 
-    -Proposer - Given the correction context, proposes a keyword or phrase that could catch similar cases 
-    -Evaluator - Given the proposed keyword and existing list, checks for specificity, redundancy, and usefulness. Also rejects with a reason and rejects if the keyword already exists in the current rules
-    -This pattern reduces low-quality output from entering the keywords list - a single model generating and approving would be unreliable
-    -Approved rules still need to be further examined and improved by a human. A human compliance officier runs `python3 main.py approve-rules` to review each proposal before its added to the final keyword list
+2. **Rules distillation** - I use a two LLM proposer-evaluator pattern to propose new keywords to be added to the current rules based on logged corrections. 
+    - Proposer - Given the correction context, proposes a keyword or phrase that could catch similar cases 
+    - Evaluator - Given the proposed keyword and existing list, checks for specificity, redundancy, and usefulness. Also rejects with a reason and rejects if the keyword already exists in the current rules
+    - This pattern reduces low-quality output from entering the keywords list - a single model generating and approving would be unreliable
+    - Approved rules still need to be further examined and improved by a human. A human compliance officier runs `python3 main.py approve-rules` to review each proposal before its added to the final keyword list
 
 **Human in the Loop Design** - No correction, distilled rule or proposed keyword ever affects the live system without a human approving it. The agent can learn and propose but not self-modify. This is intentional for a compliance context where false positives can have an impact.   
 
