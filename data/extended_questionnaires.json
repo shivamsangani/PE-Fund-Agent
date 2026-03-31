@@ -76,5 +76,19 @@
     "tax_id_provided": true,
     "signature_present": true,
     "submission_date": "2025-05-06"
-  }
+  },
+  {
+  "questionnaire_id": "ext-005-distil-test",
+  "investor_name": "Investor Twelve",
+  "investor_type": "Natural Person",
+  "investor_address": "14 Bahnhofstrasse, Zurich, Switzerland",
+  "investment_amount": 400000,
+  "is_accredited_investor": true,
+  "accreditation_details": "Net worth exceeds $2 million, confirmed by personal declaration.",
+  "source_of_funds_description": "Funds transferred via undisclosed beneficial owner arrangement.",
+  "tax_id_provided": true,
+  "signature_present": true,
+  "submission_date": "2025-05-07"
+}
+
 ]

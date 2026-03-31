@@ -3,19 +3,19 @@
     "questionnaire_id": "6f01245h-5fkl-9g1i-3456-760h99h4hf1f",
     "decision": "Escalate",
     "missing_fields": null,
-    "escalation_reason": "Keyword match: 'intermediary entities'"
+    "escalation_reason": "Low confidence — human review required"
   },
   {
     "questionnaire_id": "7g12356i-6glm-0h2j-4567-871i00i5ig2g",
-    "decision": "Escalate",
+    "decision": "Approve",
     "missing_fields": null,
-    "escalation_reason": "Keyword match: 'emerging markets'"
+    "escalation_reason": null
   },
   {
     "questionnaire_id": "ext-001-llm-ambiguous",
     "decision": "Escalate",
     "missing_fields": null,
-    "escalation_reason": "Structured arrangements and cross-border reallocation lack specificity; potential layering indicators"
+    "escalation_reason": "Vague terminology obscures fund origin and investor qualification"
   },
   {
     "questionnaire_id": "ext-002-clean-approve",
@@ -27,7 +27,7 @@
     "questionnaire_id": "ext-003-low-confidence",
     "decision": "Escalate",
     "missing_fields": null,
-    "escalation_reason": "Vague sourcing; internal confirmation lacks independence"
+    "escalation_reason": "Vague accreditation confirmation; insufficient source detail"
   },
   {
     "questionnaire_id": "ext-004-missing-plus-nonaccredited",
@@ -37,5 +37,11 @@
       "investment_amount"
     ],
     "escalation_reason": null
+  },
+  {
+    "questionnaire_id": "ext-005-distil-test",
+    "decision": "Escalate",
+    "missing_fields": null,
+    "escalation_reason": "Keyword match: 'undisclosed beneficial owner'"
   }
 ]

@@ -1,20 +1,11 @@
 [
   {
-    "questionnaire_id": "6f01245h-5fkl-9g1i-3456-760h99h4hf1f",
-    "source_of_funds_description": "Proceeds from international business activities conducted through intermediary entities.",
-    "accreditation_details": "Accreditation confirmed via independent advisor assessment.",
-    "agent_decision": "Escalate",
-    "human_decision": "Escalate",
-    "human_reason": "Source references intermediary entities without identifying the underlying business — classic layering red flag.",
-    "timestamp": "2026-03-30T20:38:24.015355+00:00"
-  },
-  {
-    "questionnaire_id": "7g12356i-6glm-0h2j-4567-871i00i5ig2g",
-    "source_of_funds_description": "Proceeds from recent property disposals in emerging markets.",
-    "accreditation_details": "Net worth exceeds $1 million excluding primary residence.",
+    "questionnaire_id": "ext-005-distil-test",
+    "source_of_funds_description": "Funds transferred via undisclosed beneficial owner arrangement.",
+    "accreditation_details": "Net worth exceeds $2 million, confirmed by personal declaration.",
     "agent_decision": "Approve",
     "human_decision": "Escalate",
-    "human_reason": "Source of funds references intermediary entities without naming them — classic layering indicator in AML compliance.",
-    "timestamp": "2026-03-30T21:01:06.044079+00:00"
+    "human_reason": "Undisclosed beneficial owner is a known AML red flag - identity of controlling party must be established before approval",
+    "timestamp": "2026-03-31T12:19:35.728820+00:00"
   }
 ]

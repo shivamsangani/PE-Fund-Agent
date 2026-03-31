@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [Demo](#demo)
 - [Setup](#setup)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
@@ -36,6 +37,10 @@ A basic overview of the architecture:
 **Key assumptions:** input is a well-formed JSON array, `questionnaire_id` is always unique, and Return takes priority over Escalate when both conditions are met. The confidence threshold of 75 and the 3 few-shot example limit are deliberate choices rather than spec requirements. Full assumptions and known limitations are documented at the bottom of this README.
 
 Please find a more detailed description of my architecture, design choices, decision logic and learning mechanism below. Hope you enjoy reading my documentation and using my agent!
+
+## Demo
+
+[![PE Fund Agent Demo](https://img.youtube.com/vi/lZ-cHZfdJxQ/0.jpg)](https://youtu.be/lZ-cHZfdJxQ)
 
 ## Setup
 
