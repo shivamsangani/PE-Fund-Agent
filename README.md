@@ -19,6 +19,7 @@
 - [Security Decisions](#security-decisions)
 - [Assumptions](#assumptions)
 - [Known Limitations](#known-limitations)
+- [Evaluation Metrics](#evaluation-metrics)
 
 ## Overview
 This repository contains a prototype AI agent system capable of processing PE fund subscription questionnaires. Based on the content and structure of each questionnaire the agent either:
@@ -250,4 +251,13 @@ Several security assumptions were made about the threat model and data handling 
 - **Feedback log grows unboundedly** — there is no archiving or pruning mechanism. Over time, old corrections from outdated compliance policies will still be retrieved as few-shot examples
 - **Single-provider dependency** — Layer 2 and distillation are coupled to the Anthropic SDK. Switching providers requires changes in `analyser.py` and `distillation.py`
 - **Prototype scale only** — processes records sequentially in a single process. Not suitable for high-volume batch processing without parallelisation
+
+## Evaluation Metrics
+
+To evaluate this agent in production, the following metrics would be most relevant:
+
+- **Extraction accuracy** — compare agent decisions against a human-labelled ground truth dataset. Run the pipeline on the same set of historical submissions processed manually and compute decision-level accuracy across Approve, Return, and Escalate
+- **False positive / false negative rates** — particularly important for compliance. A false negative (missing a real AML risk) is significantly more costly than a false positive (escalating a clean submission). Thresholds should be tuned to minimise false negatives even at the cost of more false positives
+- **Human override rate** — how often does a compliance officer correct the agent's decision? A rate consistently above ~15% suggests the system is not accurate enough to be trusted and the confidence threshold or keyword list needs recalibrating
+- **Confidence calibration** — does the confidence score actually predict accuracy? If the model returns 90% confidence on cases that turn out to be 60% accurate, the calibration is off and the confidence gate is unreliable. This can be visualised as a calibration curve (predicted confidence vs actual accuracy) — a well-calibrated model should sit close to the diagonal
 
